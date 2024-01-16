@@ -460,9 +460,9 @@ def zero_row_min(x: Tensor) -> Tensor:
     ##########################################################################
     # Replace "pass" statement with your code
     index1 = torch.arange(x.shape[0])
-    _, index2 = x.min(dim=0)
+    _, index2 = x.min(dim=1)
     y = x.clone()
-    y[index1, index2] = 0
+    y[index1, index2.tolist()] = 0
     ##########################################################################
     #                            END OF YOUR CODE                            #
     ##########################################################################
@@ -518,7 +518,14 @@ def batched_matrix_multiply_loop(x: Tensor, y: Tensor) -> Tensor:
     #                      TODO: Implement this function                      #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    B, N, M = x.shape
+    _, __, P = y.shape
+    z = torch.zeros((B, N, P))
+    for i in range(B):
+        for j in range(N):
+            for k in range(P):
+                for l in range(M):
+                    z[i, j, k] += x[i, j, l] * y[i, l, k]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
@@ -549,7 +556,7 @@ def batched_matrix_multiply_noloop(x: Tensor, y: Tensor) -> Tensor:
     #                      TODO: Implement this function                      #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    z = torch.bmm(x, y)
     ###########################################################################
     #                            END OF YOUR CODE                             #
     ###########################################################################
@@ -584,7 +591,9 @@ def normalize_columns(x: Tensor) -> Tensor:
     #                      TODO: Implement this function                     #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    mean = torch.mean(x, dim=0)
+    std = torch.std(x, dim=0)
+    y = (x - mean) / std
     ##########################################################################
     #                            END OF YOUR CODE                            #
     ##########################################################################
