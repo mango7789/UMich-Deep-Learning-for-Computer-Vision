@@ -60,7 +60,9 @@ def compute_distances_two_loops(x_train: torch.Tensor, x_test: torch.Tensor):
     # functions from torch.nn or torch.nn.functional.                        #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    for i in range(num_train):
+        for j in range(num_test):
+            dists[i, j] += torch.sum(torch.pow(x_train[i] - x_test[j], 2))
     ##########################################################################
     #                           END OF YOUR CODE                             #
     ##########################################################################
@@ -104,7 +106,8 @@ def compute_distances_one_loop(x_train: torch.Tensor, x_test: torch.Tensor):
     # functions from torch.nn or torch.nn.functional.                        #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    for i in range(num_train):
+        dists[i] += torch.sum(torch.pow(x_train[i] - x_test, 2).reshape(num_test, -1), dim=1)
     ##########################################################################
     #                           END OF YOUR CODE                             #
     ##########################################################################
@@ -156,7 +159,11 @@ def compute_distances_no_loops(x_train: torch.Tensor, x_test: torch.Tensor):
     #       and a matrix multiply.                                           #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    x_train = x_train.view(num_train, -1)
+    x_test = x_test.view(num_test, -1)
+    train_square = torch.sum(x_train * x_train, dim=1).repeat(num_test, 1).t()
+    test_square = torch.sum(x_test * x_test, dim=1).repeat(num_train, 1)
+    dists += train_square + test_square - 2 * torch.mm(x_train, torch.t(x_test))
     ##########################################################################
     #                           END OF YOUR CODE                             #
     ##########################################################################
@@ -199,7 +206,8 @@ def predict_labels(dists: torch.Tensor, y_train: torch.Tensor, k: int = 1):
     # HINT: Look up the function torch.topk                                  #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    elements = torch.topk(dists.t(), k, largest=False).indices
+    y_pred = torch.mode(y_train[elements]).values
     ##########################################################################
     #                           END OF YOUR CODE                             #
     ##########################################################################
