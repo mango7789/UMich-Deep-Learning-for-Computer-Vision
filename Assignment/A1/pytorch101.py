@@ -420,7 +420,7 @@ def reshape_practice(x: Tensor) -> Tensor:
     #                      TODO: Implement this function                     #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    y = x.view(2, 3, 4).permute(1, 0, 2).reshape(3, 8)
     ##########################################################################
     #                            END OF YOUR CODE                            #
     ##########################################################################
@@ -459,7 +459,10 @@ def zero_row_min(x: Tensor) -> Tensor:
     #                      TODO: Implement this function                     #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    index1 = torch.arange(x.shape[0])
+    _, index2 = x.min(dim=0)
+    y = x.clone()
+    y[index1, index2] = 0
     ##########################################################################
     #                            END OF YOUR CODE                            #
     ##########################################################################
