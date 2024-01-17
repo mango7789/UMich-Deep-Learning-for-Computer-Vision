@@ -231,7 +231,8 @@ class KnnClassifier:
         # `self.x_train` and `self.y_train`, accordingly.                    #
         ######################################################################
         # Replace "pass" statement with your code
-        pass
+        self.x_train = x_train
+        self.y_train = y_train
         ######################################################################
         #                         END OF YOUR CODE                           #
         ######################################################################
@@ -255,7 +256,8 @@ class KnnClassifier:
         # to predict output labels.                                          #
         ######################################################################
         # Replace "pass" statement with your code
-        pass
+        dists = compute_distances_no_loops(self.x_train, x_test)
+        y_test_pred = predict_labels(dists, self.y_train, k)
         ######################################################################
         #                         END OF YOUR CODE                           #
         ######################################################################
@@ -329,7 +331,8 @@ def knn_cross_validate(
     # HINT: torch.chunk                                                      #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    x_train_folds = x_train.chunk(num_folds)
+    y_train_folds = y_train.chunk(num_folds)
     ##########################################################################
     #                           END OF YOUR CODE                             #
     ##########################################################################
@@ -350,7 +353,16 @@ def knn_cross_validate(
     # HINT: torch.cat                                                        #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    for k in k_choices:
+        accuracies = []
+        for i in range(num_folds):
+            x_test = x_train_folds[i]
+            y_test = y_train_folds[i]
+            x_train = torch.cat(x_train_folds[:i] + x_train_folds[i+1:])
+            y_train = torch.cat(y_train_folds[:i] + y_train_folds[i+1:])
+            Classifier = KnnClassifier(x_train, y_train)
+            accuracies.append(Classifier.check_accuracy(x_test, y_test, k))
+        k_to_accuracies[k] = accuracies
     ##########################################################################
     #                           END OF YOUR CODE                             #
     ##########################################################################
@@ -380,7 +392,12 @@ def knn_get_best_k(k_to_accuracies: Dict[int, List]):
     # the value of k that has the highest mean accuracy accross all folds.   #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    minimum_accuracy = 0
+    for k, value in k_to_accuracies.items():
+        accuracy = torch.mean(torch.tensor(value))
+        if accuracy > minimum_accuracy:
+            minimum_accuracy = accuracy
+            best_k = k
     ##########################################################################
     #                           END OF YOUR CODE                             #
     ##########################################################################
