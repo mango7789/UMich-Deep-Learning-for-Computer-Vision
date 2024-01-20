@@ -514,6 +514,7 @@ def softmax_loss_naive(
     num_train = X.shape[0]
     for i in range(num_train):
         scores = torch.mv(W.t(), X[i])
+        scores -= torch.max(scores) # numerically stable
         den = torch.sum(torch.exp(scores))
         loss -= torch.log(torch.exp(scores[y[i]]) / den)
         for j in range(num_classes):
@@ -554,7 +555,16 @@ def softmax_loss_vectorized(
     # Replace "pass" statement with your code
     num_classes, num_train = W.shape[1], X.shape[0]
     scores = torch.mm(X, W)
-    correct_class_score = scores[torch.arange(num_train), y].view(-1, 1)
+    scores -= torch.max(scores, dim=1, keepdim=True).values
+    probs = torch.exp(scores) / torch.sum(torch.exp(scores), dim=1).view(-1, 1)
+
+    loss -= torch.sum(torch.log(probs[torch.arange(num_train), y]))
+    loss /= num_train
+    loss += reg * torch.sum(W * W)
+    probs[torch.arange(num_train), y] -= 1
+    dW = torch.mm(X.t(), probs)
+    dW /= num_train
+    dW += 2 * reg * W
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
@@ -583,7 +593,8 @@ def softmax_get_search_params():
     # classifier.                                                             #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates = [1e-2, 1e-1, 1e0]
+    regularization_strengths = [1e-5, 1e-4, 1e-3]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
