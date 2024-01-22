@@ -147,7 +147,9 @@ def nn_forward_pass(params: Dict[str, torch.Tensor], X: torch.Tensor):
     # shape (N, C).                                                            #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    hidden = torch.mm(X, W1) + b1
+    hidden[hidden <= 0] = 0
+    scores = torch.mm(hidden, W2) + b2
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -212,7 +214,11 @@ def nn_forward_backward(
     # (Check Numeric Stability in http://cs231n.github.io/linear-classify/).   #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    scores -= torch.max(scores, dim=1, keepdim=True).values
+    probs = torch.exp(scores) / torch.sum(torch.exp(scores), dim=1).view(-1, 1)
+    loss = -torch.sum(torch.log(probs[torch.arange(N), y]))
+    loss /= N
+    loss += reg * torch.sum(W1 * W1) + reg * torch.sum(W2 * W2)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -226,7 +232,17 @@ def nn_forward_backward(
     # tensor of same size                                                     #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    grads_scores = probs
+    grads_scores[torch.arange(N), y] -= 1
+    grads_scores /= N
+    grads['W2'] = torch.mm(h1.t(), grads_scores)
+    grads['W2'] += 2 * reg * W2
+    grads['b2'] = torch.sum(grads_scores, dim=0)
+    grads_h1 = torch.mm(grads_scores, W2.t())
+    grads_h1[h1 <= 0] = 0
+    grads['W1'] = torch.mm(X.t(), grads_h1)
+    grads['W1'] += 2 * reg * W1
+    grads['b1'] = torch.sum(grads_h1, dim=0)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -307,7 +323,10 @@ def nn_train(
         # stored in the grads dictionary defined above.                         #
         #########################################################################
         # Replace "pass" statement with your code
-        pass
+        params['W1'] -= learning_rate * grads['W1']
+        params['b1'] -= learning_rate * grads['b1']
+        params['W2'] -= learning_rate * grads['W2']
+        params['b2'] -= learning_rate * grads['b2']
         #########################################################################
         #                             END OF YOUR CODE                          #
         #########################################################################
@@ -365,7 +384,8 @@ def nn_predict(
     # TODO: Implement this function; it should be VERY simple!                #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    scores = loss_func(params, X)
+    y_pred = torch.argmax(scores, dim=1)
     ###########################################################################
     #                              END OF YOUR CODE                           #
     ###########################################################################
