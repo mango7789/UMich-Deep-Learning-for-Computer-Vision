@@ -419,7 +419,10 @@ def nn_get_search_params():
     # classifier.                                                             #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates = [1e0]
+    hidden_sizes = [256, 512]
+    regularization_strengths = [1e-5, 1e-4, 1e-3, 1e-2]
+    learning_rate_decays = [0.97, 0.95]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
@@ -480,7 +483,30 @@ def find_best_net(
     # automatically like we did on the previous exercises.                      #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates, hidden_sizes, regularization_strengths, learning_rate_decays = get_param_set_fn()
+    for lr in learning_rates:
+        for hs in hidden_sizes:
+            for rs in regularization_strengths:
+                for lrd in learning_rate_decays:
+                    net = TwoLayerNet(3 * 32 * 32, hs, 10, device=data_dict['X_train'].device, dtype=data_dict['X_train'].dtype)
+                    stats = net.train(data_dict['X_train'], data_dict['y_train'], data_dict['X_val'], data_dict['y_val'],
+                                        num_iters=3000, batch_size=1000,
+                                        learning_rate=lr, learning_rate_decay=lrd,
+                                        reg=rs, verbose=False)
+                    val_acc = stats['val_acc_history'][-1]
+                    print('train with hyperparameters: lr = {}, hs = {}, reg = {}, lr_decay = {}: val_acc = {}'\
+                                .format(lr, hs, rs, lrd, val_acc))
+                    if val_acc > best_val_acc:
+                        best_lr = lr
+                        best_hs = hs
+                        best_reg = rs
+                        best_lr_decay = lrd
+
+                        best_val_acc = val_acc
+                        best_net = net
+                        best_stat = stats
+
+    print('hyperparameters with best model: lr = {}, hs = {}, reg = {}, lr_decay = {}'.format(best_lr, best_hs, best_reg, best_lr_decay))
     #############################################################################
     #                               END OF YOUR CODE                            #
     #############################################################################
