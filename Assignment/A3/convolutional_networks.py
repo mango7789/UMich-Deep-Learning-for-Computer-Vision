@@ -51,7 +51,20 @@ class Conv(object):
         # You are NOT allowed to use anything in torch.nn in other places. #
         ####################################################################
         # Replace "pass" statement with your code
-        pass
+        pad, stride = conv_param['pad'], conv_param['stride']
+        padded_x = torch.nn.functional.pad(x, (pad, pad, pad, pad))
+        N, C, H, W = x.shape
+        F, C, HH, WW = w.shape
+        H_dot = 1 + (H + 2 * pad - HH) // stride
+        W_dot = 1 + (W + 2 * pad - WW) // stride
+        out = torch.zeros(N, F, H_dot, W_dot).to(x)
+        for i in range(N):
+            for j in range(F):
+                w_row = w[j].reshape(-1)
+                for k in range(0, H + 2 * pad - HH + 1, stride):
+                    for l in range(0, W + 2 * pad - WW + 1, stride):
+                        curr_x = padded_x[i, :, k:k+HH, l:l+WW].reshape(-1)
+                        out[i][j][k // stride][l // stride] = torch.dot(w_row, curr_x) + b[j]
         #####################################################################
         #                          END OF YOUR CODE                         #
         #####################################################################
