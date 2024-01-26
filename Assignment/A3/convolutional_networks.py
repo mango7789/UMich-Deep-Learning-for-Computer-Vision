@@ -89,7 +89,22 @@ class Conv(object):
         # TODO: Implement the convolutional backward pass.            #
         ###############################################################
         # Replace "pass" statement with your code
-        pass
+        x, w, b, conv_param = cache
+        pad, stride = conv_param['pad'], conv_param['stride']
+        padded_x = torch.nn.functional.pad(x, (pad, pad, pad, pad))
+        N, C, H, W = x.shape
+        F, C, HH, WW = w.shape
+        H_dot = 1 + (H + 2 * pad - HH) // stride
+        W_dot = 1 + (W + 2 * pad - WW) // stride
+        dx, dw = torch.zeros_like(padded_x), torch.zeros_like(w)
+        for i in range(N):
+            for j in range(F):
+                for k in range(H_dot):
+                    for l in range(W_dot):
+                        dx[i, :, k*stride:k*stride+HH, l*stride:l*stride+HH] += w[j, :] * dout[i, j, k, l]
+                        dw[j, :] += padded_x[i, :, k*stride:k*stride+HH, l*stride:l*stride+HH] * dout[i, j, k, l]
+        dx = dx[:, :, pad:pad+H, pad:pad+W]
+        db = torch.sum(dout, dim=(0, 2, 3))
         ###############################################################
         #                       END OF YOUR CODE                      #
         ###############################################################
@@ -122,7 +137,16 @@ class MaxPool(object):
         # TODO: Implement the max-pooling forward pass                     #
         ####################################################################
         # Replace "pass" statement with your code
-        pass
+        N, C, H, W = x.shape
+        pool_height, pool_width, stride = pool_param['pool_height'], pool_param['pool_width'], pool_param['stride']
+        H_dot = 1 + (H - pool_height) // stride
+        W_dot = 1 + (W - pool_width) // stride
+        out = torch.zeros(N, C, H_dot, W_dot).to(x)
+        for i in range(N):
+            for j in range(C):
+                for k in range(H_dot):
+                    for l in range(W_dot):
+                        out[i, j, k, l] = torch.max(x[i, j, k*stride:k*stride+pool_height, l*stride:l*stride+pool_width])
         ####################################################################
         #                         END OF YOUR CODE                         #
         ####################################################################
@@ -144,7 +168,17 @@ class MaxPool(object):
         # TODO: Implement the max-pooling backward pass                     #
         #####################################################################
         # Replace "pass" statement with your code
-        pass
+        x, pool_param = cache
+        pool_height, pool_width, stride = pool_param['pool_height'], pool_param['pool_width'], pool_param['stride']
+        dx = torch.zeros_like(x)
+        N, C, H_dot, W_dot = dout.shape
+        for i in range(N):
+            for j in range(C):
+                for k in range(H_dot):
+                    for l in range(W_dot):
+                        curr_window = x[i, j, k*stride:k*stride+pool_height, l*stride:l*stride+pool_width]
+                        mask = curr_window == torch.max(curr_window)
+                        dx[i, j, k*stride:k*stride+pool_height, l*stride:l*stride+pool_width][mask] = dout[i, j, k, l]
         ####################################################################
         #                          END OF YOUR CODE                        #
         ####################################################################
@@ -207,7 +241,13 @@ class ThreeLayerConvNet(object):
         # look at the start of the loss() function to see how that happens.  #
         ######################################################################
         # Replace "pass" statement with your code
-        pass
+        C, H, W = input_dims
+        self.params['W1'] = torch.randn(num_filters, C, filter_size, filter_size, dtype=dtype, device=device) * weight_scale
+        self.params['b1'] = torch.zeros(num_filters, dtype=dtype, device=device)
+        self.params['W2'] = torch.randn(num_filters * (H // 2) * (W // 2), hidden_dim, dtype=dtype, device=device) * weight_scale
+        self.params['b2'] = torch.zeros(hidden_dim, dtype=dtype, device=device)
+        self.params['W3'] = torch.randn(hidden_dim, num_classes, dtype=dtype, device=device) * weight_scale
+        self.params['b3'] = torch.zeros(num_classes, dtype=dtype, device=device) 
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -256,7 +296,9 @@ class ThreeLayerConvNet(object):
         # above                                                              #
         ######################################################################
         # Replace "pass" statement with your code
-        pass
+        h1, cache1 = Conv_ReLU_Pool.forward(X, W1, b1, conv_param, pool_param)
+        h2, cache2 = Linear_ReLU.forward(h1, W2, b2)
+        scores, cache3 = Linear.forward(h2, W3, b3)
         ######################################################################
         #                             END OF YOUR CODE                       #
         ######################################################################
@@ -277,7 +319,13 @@ class ThreeLayerConvNet(object):
         # does not include a factor of 0.5                                 #
         ####################################################################
         # Replace "pass" statement with your code
-        pass
+        loss, dout = softmax_loss(scores, y)
+        dh2, grads['W3'], grads['b3'] = Linear.backward(dout, cache3)
+        dh1, grads['W2'], grads['b2'] = Linear_ReLU.backward(dh2, cache2)
+        dx, grads['W1'], grads['b1'] = Conv_ReLU_Pool.backward(dh1, cache1)
+        for i in range(1, 4):
+            loss += self.reg * torch.sum(self.params[f'W{i}'] ** 2)
+            grads[f'W{i}'] += 2 * self.reg * self.params[f'W{i}']
         ###################################################################
         #                             END OF YOUR CODE                    #
         ###################################################################
