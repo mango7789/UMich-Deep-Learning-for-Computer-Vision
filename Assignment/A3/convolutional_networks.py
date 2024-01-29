@@ -410,6 +410,25 @@ class DeepConvNet(object):
         #####################################################################
         # Replace "pass" statement with your code
         C, H, W = input_dims
+        filter_size, filters = 3, [C] + num_filters
+        if weight_scale == "kaiming":
+            for i in range(self.num_layers-1):
+                self.params[f'W{i + 1}'] = kaiming_initializer(filters[i+1], filters[i], K=filter_size, relu=True, dtype=dtype, device=device) 
+                self.params[f'b{i + 1}'] = torch.zeros(filters[i+1], dtype=dtype, device=device)
+                if self.batchnorm:
+                    self.params[f'gamma{i + 1}'] = torch.ones(filters[i+1], dtype=dtype, device=device)
+                    self.params[f'beta{i + 1}'] = torch.zeros(filters[i+1], dtype=dtype, device=device)
+            self.params[f'W{self.num_layers}'] = kaiming_initializer(filters[-1] * (H // (2 ** len(max_pools))) * (W // (2 ** len(max_pools))), num_classes, relu=False, dtype=dtype, device=device)
+            self.params[f'b{self.num_layers}'] = torch.zeros(num_classes, dtype=dtype, device=device)
+        else:
+            for i in range(self.num_layers-1):
+                self.params[f'W{i + 1}'] = torch.randn(filters[i+1], filters[i], filter_size, filter_size, dtype=dtype, device=device) * weight_scale
+                self.params[f'b{i + 1}'] = torch.zeros(filters[i+1], dtype=dtype, device=device)
+                if self.batchnorm:
+                    self.params[f'gamma{i + 1}'] = torch.ones(filters[i+1], dtype=dtype, device=device)
+                    self.params[f'beta{i + 1}'] = torch.zeros(filters[i+1], dtype=dtype, device=device)
+            self.params[f'W{self.num_layers}'] = torch.randn(filters[-1] * (H // (2 ** len(max_pools))) * (W // (2 ** len(max_pools))), num_classes, dtype=dtype, device=device) * weight_scale
+            self.params[f'b{self.num_layers}'] = torch.zeros(num_classes, dtype=dtype, device=device)
         ################################################################
         #                      END OF YOUR CODE                        #
         ################################################################
@@ -516,7 +535,23 @@ class DeepConvNet(object):
         # layers, to simplify your implementation.              #
         #########################################################
         # Replace "pass" statement with your code
-        pass
+        caches, x = {}, X
+        for i in range(self.num_layers - 1):
+            W, b = self.params[f'W{i + 1}'], self.params[f'b{i + 1}']
+            if self.batchnorm:
+                gamma, beta = self.params[f'gamma{i + 1}'], self.params[f'beta{i + 1}']
+                if i in self.max_pools:
+                    x, caches[i] = Conv_BatchNorm_ReLU_Pool.forward(x, W, b, gamma, beta, conv_param, self.bn_params, pool_param)
+                else:
+                    x, caches[i] = Conv_BatchNorm_ReLU.forward(x, W, b, gamma, beta, conv_param, self.bn_params)
+            else:
+                if i in self.max_pools:
+                    x, caches[i] = Conv_ReLU_Pool.forward(x, W, b, conv_param, pool_param)
+                else:
+                    x, caches[i] = Conv_ReLU.forward(x, W, b, conv_param)
+        W, b = self.params[f'W{self.num_layers}'], self.params[f'b{self.num_layers}']
+        scores, caches[self.num_layers - 1] = Linear.forward(x, W, b)
+                
         #####################################################
         #                 END OF YOUR CODE                  #
         #####################################################
@@ -537,7 +572,24 @@ class DeepConvNet(object):
         # does not include a factor of 0.5                                #
         ###################################################################
         # Replace "pass" statement with your code
-        pass
+        loss, dout = softmax_loss(scores, y)
+        for i in range(self.num_layers):
+            loss += self.reg * torch.sum(self.params[f'W{i + 1}'] ** 2)
+        dh, grads[f'W{self.num_layers}'], grads[f'b{self.num_layers}'] = Linear.backward(dout, caches[self.num_layers - 1])
+        grads[f'W{self.num_layers}'] += 2 * self.reg * self.params[f'W{self.num_layers}']
+        for i in range(self.num_layers - 1, 0, -1):
+            if self.batchnorm:
+                if i - 1 in self.max_pools:
+                    dh, grads[f'W{i}'], grads[f'b{i}'], grads[f'gamma{i}'], grads[f'beta{i}'] = Conv_BatchNorm_ReLU_Pool.backward(dh, caches[i - 1])
+                else:
+                    dh, grads[f'W{i}'], grads[f'b{i}'], grads[f'gamma{i}'], grads[f'beta{i}'] = Conv_BatchNorm_ReLU.backward(dh, caches[i - 1])
+            else:
+                if i - 1 in self.max_pools:
+                    dh, grads[f'W{i}'], grads[f'b{i}'] = Conv_ReLU_Pool.backward(dh, caches[i - 1])
+                else:
+                    dh, grads[f'W{i}'], grads[f'b{i}'] = Conv_ReLU.backward(dh, caches[i - 1])
+            grads[f'W{i}'] += 2 * self.reg * self.params[f'W{i}']
+        
         #############################################################
         #                       END OF YOUR CODE                    #
         #############################################################
@@ -553,7 +605,8 @@ def find_overfit_parameters():
     # model achieves 100% training accuracy within 30 epochs. #
     ###########################################################
     # Replace "pass" statement with your code
-    pass
+    weight_scale = 2e-1  
+    learning_rate = 1e-3
     ###########################################################
     #                       END OF YOUR CODE                  #
     ###########################################################
@@ -568,7 +621,20 @@ def create_convolutional_solver_instance(data_dict, dtype, device):
     # CIFAR-10 within 60 seconds.                           #
     #########################################################
     # Replace "pass" statement with your code
-    pass
+    input_dims = data_dict['X_train'].shape[1:]
+    model = DeepConvNet(input_dims=input_dims, 
+                        num_classes=10,
+                        num_filters=[32, 32, 64, 64, 128, 128],
+						max_pools=[1, 3, 5],
+						batchnorm=False,
+						weight_scale='kaiming',
+						reg=1e-5, dtype=dtype, device=device
+                    	)
+    solver = Solver(model, data_dict, num_epochs=20, batch_size=128, update_rule=adam, optim_config={
+                    'learning_rate': 2e-3,
+					},
+					lr_decay=0.90,
+					print_every=100, device=device)
     #########################################################
     #                  END OF YOUR CODE                     #
     #########################################################
@@ -610,7 +676,8 @@ def kaiming_initializer(Din, Dout, K=None, relu=True, device='cpu',
         # and device.                                                     #
         ###################################################################
         # Replace "pass" statement with your code
-        pass
+        weight_scale = (gain / Din) ** 0.5
+        weight = torch.randn(Din, Dout, dtype=dtype, device=device) * weight_scale
         ###################################################################
         #                            END OF YOUR CODE                     #
         ###################################################################
@@ -624,7 +691,8 @@ def kaiming_initializer(Din, Dout, K=None, relu=True, device='cpu',
         # and device.                                                     #
         ###################################################################
         # Replace "pass" statement with your code
-        pass
+        weight_scale = (gain / (Din * K * K)) ** 0.5
+        weight = torch.randn(Din, Dout, K, K, dtype=dtype, device=device) * weight_scale
         ###################################################################
         #                         END OF YOUR CODE                        #
         ###################################################################
