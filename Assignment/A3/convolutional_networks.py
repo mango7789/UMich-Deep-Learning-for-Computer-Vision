@@ -409,7 +409,7 @@ class DeepConvNet(object):
         # initilized to ones and zeros respectively.                        #
         #####################################################################
         # Replace "pass" statement with your code
-        pass
+        C, H, W = input_dims
         ################################################################
         #                      END OF YOUR CODE                        #
         ################################################################
