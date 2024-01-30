@@ -541,9 +541,9 @@ class DeepConvNet(object):
             if self.batchnorm:
                 gamma, beta = self.params[f'gamma{i + 1}'], self.params[f'beta{i + 1}']
                 if i in self.max_pools:
-                    x, caches[i] = Conv_BatchNorm_ReLU_Pool.forward(x, W, b, gamma, beta, conv_param, self.bn_params, pool_param)
+                    x, caches[i] = Conv_BatchNorm_ReLU_Pool.forward(x, W, b, gamma, beta, conv_param, self.bn_params[i], pool_param)
                 else:
-                    x, caches[i] = Conv_BatchNorm_ReLU.forward(x, W, b, gamma, beta, conv_param, self.bn_params)
+                    x, caches[i] = Conv_BatchNorm_ReLU.forward(x, W, b, gamma, beta, conv_param, self.bn_params[i])
             else:
                 if i in self.max_pools:
                     x, caches[i] = Conv_ReLU_Pool.forward(x, W, b, conv_param, pool_param)
@@ -781,7 +781,15 @@ class BatchNorm(object):
             # (https://arxiv.org/abs/1502.03167) might prove to be helpful.  #
             ##################################################################
             # Replace "pass" statement with your code
-            pass
+            sample_mean = torch.mean(x, dim=0)
+            sample_var = 1 / N * torch.sum((x - sample_mean) ** 2, dim=0)
+            x_mean = x - sample_mean
+            sqrt_var = torch.sqrt(sample_var + eps)
+            x_norm = x_mean / sqrt_var
+            out = gamma * x_norm + beta
+            cache = mode, x_norm, x_mean, sqrt_var, gamma
+            running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+            running_var = momentum * running_var + (1 - momentum) * sample_var
             ################################################################
             #                           END OF YOUR CODE                   #
             ################################################################
@@ -794,7 +802,11 @@ class BatchNorm(object):
             # in the out variable.                                         #
             ################################################################
             # Replace "pass" statement with your code
-            pass
+            x_mean = x - running_mean
+            sqrt_var = torch.sqrt(running_var + eps)
+            x_norm = x_mean / sqrt_var
+            out = gamma * x_norm + beta
+            cache = mode, x_norm, x_mean, sqrt_var, gamma
             ################################################################
             #                      END OF YOUR CODE                        #
             ################################################################
@@ -836,7 +848,27 @@ class BatchNorm(object):
         # Don't forget to implement train and test mode separately.         #
         #####################################################################
         # Replace "pass" statement with your code
-        pass
+        N, D = dout.shape
+        mode, x_norm, x_mean, sqrt_var, gamma = cache
+        if mode == "train":
+            dbeta = torch.sum(dout, dim=0)
+            dgamma = torch.sum(dout * x_norm, dim=0)
+            dnorm = dout * gamma
+            # mathmatical induction
+            ddenom = torch.sum(dnorm * x_mean, dim=0)
+            dsqrt = -1 / (sqrt_var ** 2) * ddenom
+            dmean2 = 0.5 / sqrt_var * dsqrt
+            dsquare = 1 / N * dmean2
+            dnum1 = dnorm / sqrt_var
+            dnum2 = 2 * x_mean * dsquare
+            dmean1 = -1 * torch.sum(dnum1 + dnum2, dim=0)
+            dx1 = dnum1 + dnum2
+            dx2 = 1 / N * dmean1
+            dx = dx1 + dx2
+        elif mode == "test":
+            dbeta = torch.sum(dout, dim=0)
+            dgamma = torch.sum(dout * x_norm, dim=0)
+            dx = torch.sum(dout * gamma, dim=0)
         #################################################################
         #                      END OF YOUR CODE                         #
         #################################################################
@@ -869,7 +901,17 @@ class BatchNorm(object):
         # single 80-character line.                                       #
         ###################################################################
         # Replace "pass" statement with your code
-        pass
+        N, D = dout.shape
+        mode, x_norm, x_mean, sqrt_var, gamma = cache
+        if mode == "train":
+            dbeta = torch.sum(dout, dim=0)
+            dgamma = torch.sum(dout * x_norm, dim=0)
+            dnorm = dout * gamma
+            dx = dnorm / sqrt_var - torch.sum(dnorm, dim=0) / N / sqrt_var - x_mean * torch.sum(dnorm * x_mean, dim=0) / N / (sqrt_var ** 3)
+        elif mode == "test":
+            dbeta = torch.sum(dout, dim=0)
+            dgamma = torch.sum(dout * x_norm, dim=0)
+            dx = torch.sum(dout * gamma, dim=0)
         #################################################################
         #                        END OF YOUR CODE                       #
         #################################################################
@@ -917,7 +959,10 @@ class SpatialBatchNorm(object):
         # ours is less than five lines.                                #
         ################################################################
         # Replace "pass" statement with your code
-        pass
+        N, C, H, W = x.shape
+        x = x.reshape(N * H * W, C)
+        out, cache = BatchNorm.forward(x, gamma, beta, bn_param)
+        out = out.reshape(N, C, H, W)
         ################################################################
         #                       END OF YOUR CODE                       #
         ################################################################
@@ -948,7 +993,10 @@ class SpatialBatchNorm(object):
         # ours is less than five lines.                                 #
         #################################################################
         # Replace "pass" statement with your code
-        pass
+        N, C, H, W = dout.shape
+        dout = dout.reshape(N * H * W, C)
+        dx, dgamma, dbeta = BatchNorm.backward(dout, cache)
+        dx = dx.reshape(N, C, H, W)
         ##################################################################
         #                       END OF YOUR CODE                         #
         ##################################################################
