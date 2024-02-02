@@ -84,7 +84,12 @@ class DetectorBackboneWithFPN(nn.Module):
         self.fpn_params = nn.ModuleDict()
 
         # Replace "pass" statement with your code
-        pass
+        self.fpn_params['m3'] = nn.Conv2d(dummy_out_shapes[0][1][1], out_channels, kernel_size=1, padding=0, stride=1)
+        self.fpn_params['m4'] = nn.Conv2d(dummy_out_shapes[1][1][1], out_channels, kernel_size=1, padding=0, stride=1)
+        self.fpn_params['m5'] = nn.Conv2d(dummy_out_shapes[2][1][1], out_channels, kernel_size=1, padding=0, stride=1)
+        self.fpn_params['p3'] = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, stride=1)
+        self.fpn_params['p4'] = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, stride=1)
+        self.fpn_params['p5'] = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, stride=1)
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
@@ -111,7 +116,16 @@ class DetectorBackboneWithFPN(nn.Module):
         ######################################################################
 
         # Replace "pass" statement with your code
-        pass
+        m5 = self.fpn_params['m5'](backbone_feats['c5'])
+        m4 = self.fpn_params['m4'](backbone_feats['c4'])
+        m3 = self.fpn_params['m3'](backbone_feats['c3'])
+        m5_upsampled = F.interpolate(m5, (m4.shape[2], m4.shape[3]), mode='nearest')
+        m4 += m5_upsampled
+        m4_upsampled = F.interpolate(m4, (m3.shape[2], m3.shape[3]), mode='nearest')
+        m3 += m4_upsampled
+        fpn_feats['p3'] = self.fpn_params['p3'](m3)
+        fpn_feats['p4'] = self.fpn_params['p4'](m4)
+        fpn_feats['p5'] = self.fpn_params['p5'](m5)
         ######################################################################
         #                            END OF YOUR CODE                        #
         ######################################################################
