@@ -60,7 +60,21 @@ class FCOSPredictionNetwork(nn.Module):
         stem_cls = []
         stem_box = []
         # Replace "pass" statement with your code
-        pass
+        prev_out = in_channels
+        for stem_channel in stem_channels:
+            conv_cls = nn.Conv2d(prev_out, stem_channel, kernel_size=3, stride=1, padding=1)
+            nn.init.normal_(conv_cls.weight, 0, 0.01)
+            nn.init.constant_(conv_cls.bias, 0)
+            stem_cls.append(conv_cls)
+            stem_cls.append(nn.ReLU())
+
+            conv_box = nn.Conv2d(prev_out, stem_channel, kernel_size=3, stride=1, padding=1)
+            nn.init.normal_(conv_box.weight, 0, 0.01)
+            nn.init.constant_(conv_box.bias, 0)
+            stem_box.append(conv_box)
+            stem_box.append(nn.ReLU())
+
+            prev_out = stem_channel
 
         # Wrap the layers defined by student into a `nn.Sequential` module:
         self.stem_cls = nn.Sequential(*stem_cls)
@@ -88,7 +102,17 @@ class FCOSPredictionNetwork(nn.Module):
         self.pred_ctr = None  # Centerness conv
 
         # Replace "pass" statement with your code
-        pass
+        self.pred_cls = nn.Conv2d(prev_out, num_classes, kernel_size=3, stride=1, padding=1)
+        nn.init.normal_(self.pred_cls.weight, 0, 0.01)
+        nn.init.constant_(self.pred_cls.bias, 0)
+
+        self.pred_box = nn.Conv2d(prev_out, 4, kernel_size=3, stride=1, padding=1)
+        nn.init.normal_(self.pred_box.weight, 0, 0.01)
+        nn.init.constant_(self.pred_box.bias, 0)
+        
+        self.pred_ctr = nn.Conv2d(prev_out, 1, kernel_size=3, stride=1, padding=1)
+        nn.init.normal_(self.pred_ctr.weight, 0, 0.01)
+        nn.init.constant_(self.pred_ctr.bias, 0)
         ######################################################################
         #                           END OF YOUR CODE                         #
         ######################################################################
@@ -135,7 +159,17 @@ class FCOSPredictionNetwork(nn.Module):
         centerness_logits = {}
 
         # Replace "pass" statement with your code
-        pass
+        for level_name, feat in feats_per_fpn_level.items():
+            class_logits[level_name] = self.pred_cls(self.stem_cls(feat))
+            batch_size, num_classes, _, _ = class_logits[level_name].shape
+            class_logits[level_name] = class_logits[level_name].view(batch_size, num_classes, -1).permute(0, 2, 1)
+
+            stem_box = self.stem_box(feat)
+            boxreg_deltas[level_name] = self.pred_box(stem_box)
+            boxreg_deltas[level_name] = boxreg_deltas[level_name].view(batch_size, 4, -1).permute(0, 2, 1)
+
+            centerness_logits[level_name] = self.pred_ctr(stem_box)
+            centerness_logits[level_name] = centerness_logits[level_name].view(batch_size, 1, -1).permute(0, 2, 1)
         ######################################################################
         #                           END OF YOUR CODE                         #
         ######################################################################
