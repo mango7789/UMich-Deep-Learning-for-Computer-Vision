@@ -304,7 +304,13 @@ def fcos_get_deltas_from_locations(
     deltas = None
 
     # Replace "pass" statement with your code
-    pass
+    deltas = torch.empty(gt_boxes.shape[0], 4).to(dtype=gt_boxes.dtype, device=gt_boxes.device)
+    deltas[:, 0] = locations[:, 0] - gt_boxes[:, 0]
+    deltas[:, 1] = locations[:, 1] - gt_boxes[:, 1]
+    deltas[:, 2] = gt_boxes[:, 2] - locations[:, 0]
+    deltas[:, 3] = gt_boxes[:, 3] - locations[:, 1]
+    deltas /= stride
+    deltas[gt_boxes[:, :4].sum(dim=1) == -4] = -1
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
@@ -346,7 +352,13 @@ def fcos_apply_deltas_to_locations(
     # box. Make sure to clip them to zero.                                   #
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    deltas = deltas.clip(min=0)
+    deltas *= stride
+    output_boxes = torch.empty(deltas.shape[0], 4).to(dtype=deltas.dtype, device=deltas.device)
+    output_boxes[:, 0] = locations[:, 0] - deltas[:, 0]
+    output_boxes[:, 1] = locations[:, 1] - deltas[:, 1] 
+    output_boxes[:, 2] = locations[:, 0] + deltas[:, 2]
+    output_boxes[:, 3] = locations[:, 1] + deltas[:, 3]
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
@@ -376,7 +388,11 @@ def fcos_make_centerness_targets(deltas: torch.Tensor):
     ##########################################################################
     centerness = None
     # Replace "pass" statement with your code
-    pass
+    lr, tb = deltas[:, 0::2], deltas[:, 1::2]
+    centerness = torch.sqrt(torch.min(lr, dim=1).values * torch.min(tb, dim=1).values / 
+                            (torch.max(lr, dim=1).values * torch.max(tb, dim=1).values))
+    centerness[deltas.sum(dim=1) == -4] = -1
+    centerness = centerness.to(dtype=deltas.dtype, device=deltas.device)
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
