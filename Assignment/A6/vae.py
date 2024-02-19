@@ -32,7 +32,18 @@ class VAE(nn.Module):
         # be tensors of shape (N, Z).                                             #
         ###########################################################################
         # Replace "pass" statement with your code
-        pass
+        self.hidden_dim = 400
+        self.encoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.input_size, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+		)
+        self.mu_layer = nn.Linear(self.hidden_dim, self.latent_size)
+        self.logvar_layer = nn.Linear(self.hidden_dim, self.latent_size)
         ###########################################################################
         # TODO: Implement the fully-connected decoder architecture described in   #
         # the notebook. Specifically, self.decoder should be a network that inputs#
@@ -40,7 +51,17 @@ class VAE(nn.Module):
         # estimated images of shape (N, 1, H, W).                                 #
         ###########################################################################
         # Replace "pass" statement with your code
-        pass
+        self.decoder = nn.Sequential(
+            nn.Linear(self.latent_size, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.input_size),
+            nn.Sigmoid(),
+            nn.Unflatten(1, (1, 28, 28))
+		)
         ###########################################################################
         #                                      END OF YOUR CODE                   #
         ###########################################################################
@@ -67,11 +88,15 @@ class VAE(nn.Module):
         # TODO: Implement the forward pass by following these steps               #
         # (1) Pass the input batch through the encoder model to get posterior     #
         #     mu and logvariance                                                  #
-        # (2) Reparametrize to compute  the latent vector z                       #
+        # (2) Reparametrize to compute the latent vector z                        #
         # (3) Pass z through the decoder to resconstruct x                        #
         ###########################################################################
         # Replace "pass" statement with your code
-        pass
+        z = self.encoder.forward(x)
+        mu = self.mu_layer.forward(z)
+        logvar = self.logvar_layer.forward(z)
+        z = reparametrize(mu, logvar)
+        x_hat = self.decoder.forward(z)
         ###########################################################################
         #                                      END OF YOUR CODE                   #
         ###########################################################################
@@ -175,7 +200,8 @@ def reparametrize(mu, logvar):
     # scaling by posterior mu and sigma to estimate z                             #
     ###############################################################################
     # Replace "pass" statement with your code
-    pass
+    N, Z = mu.shape
+    z = mu + torch.randn(N, Z).to(mu) * torch.sqrt(torch.exp(logvar))
     ###############################################################################
     #                              END OF YOUR CODE                               #
     ###############################################################################
@@ -205,7 +231,10 @@ def loss_function(x_hat, x, mu, logvar):
     # notebook                                                                    #
     ###############################################################################
     # Replace "pass" statement with your code
-    pass
+    N = x.shape[0]
+    reconstruction_term = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
+    kl_divergence_term = -0.5 * torch.sum(1 + logvar - mu * mu - torch.exp(logvar))
+    loss = (reconstruction_term + kl_divergence_term) / N
     ###############################################################################
     #                            END OF YOUR CODE                                 #
     ###############################################################################

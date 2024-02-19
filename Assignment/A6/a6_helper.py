@@ -338,7 +338,7 @@ def train_vae(epoch, model, train_loader, cond=False):
     loss = None
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     for batch_idx, (data, labels) in enumerate(train_loader):
-        data = data.to(device="cuda:0")
+        # data = data.to(device="cuda:0")
         if cond:
             one_hot_vec = one_hot(labels, num_classes).to(device="cuda")
             recon_batch, mu, logvar = model(data, one_hot_vec)

@@ -112,7 +112,9 @@ def rnn_step_forward(x, prev_h, Wx, Wh, b):
     # and cache variables respectively.
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    mixed = prev_h.mm(Wh) + x.mm(Wx) + b
+    next_h = torch.tanh(mixed)
+    cache = x, prev_h, Wx, Wh, mixed
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
