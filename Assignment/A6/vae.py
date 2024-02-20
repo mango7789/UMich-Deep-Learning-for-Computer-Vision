@@ -123,15 +123,35 @@ class CVAE(nn.Module):
         # log-variance estimates of the latent space (N, Z)                       #
         ###########################################################################
         # Replace "pass" statement with your code
-        pass
-
+        self.hidden_dim = 400
+        self.encoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.input_size + self.num_classes, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim), 
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim), 
+            nn.ReLU(),
+		)
+        self.mu_layer = nn.Linear(self.hidden_dim, self.latent_size)
+        self.logvar_layer = nn.Linear(self.hidden_dim, self.latent_size)
         ###########################################################################
         # TODO: Define a fully-connected decoder as described in the notebook that#
         # transforms the latent space (N, Z + C) to the estimated images of shape #
         # (N, 1, H, W).                                                           #
         ###########################################################################
         # Replace "pass" statement with your code
-        pass
+        self.decoder = nn.Sequential(
+            nn.Linear(self.latent_size + self.num_classes, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim), 
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim), 
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.input_size),
+            nn.Sigmoid(),
+            nn.Unflatten(1, (1, 28, 28)),
+		)
         ###########################################################################
         #                                      END OF YOUR CODE                   #
         ###########################################################################
@@ -164,7 +184,15 @@ class CVAE(nn.Module):
         #     resconstruct x                                                      #
         ###########################################################################
         # Replace "pass" statement with your code
-        pass
+        N, _ , H, W = x.shape
+        x = x.reshape(N, H * W)
+        x = torch.cat((x, c), dim=1)
+        z = self.encoder.forward(x)
+        mu = self.mu_layer.forward(z)
+        logvar = self.logvar_layer.forward(z)
+        z = reparametrize(mu, logvar)
+        z = torch.cat((z, c), dim=1)
+        x_hat = self.decoder.forward(z)
         ###########################################################################
         #                                      END OF YOUR CODE                   #
         ###########################################################################

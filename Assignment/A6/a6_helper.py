@@ -340,7 +340,7 @@ def train_vae(epoch, model, train_loader, cond=False):
     for batch_idx, (data, labels) in enumerate(train_loader):
         # data = data.to(device="cuda:0")
         if cond:
-            one_hot_vec = one_hot(labels, num_classes).to(device="cuda")
+            one_hot_vec = one_hot(labels, num_classes) #.to(device="cuda")
             recon_batch, mu, logvar = model(data, one_hot_vec)
         else:
             recon_batch, mu, logvar = model(data)
