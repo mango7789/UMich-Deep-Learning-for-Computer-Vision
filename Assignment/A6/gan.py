@@ -28,8 +28,7 @@ def sample_noise(batch_size, noise_dim, dtype=torch.float, device="cpu"):
     # TODO: Implement sample_noise.                                              #
     ##############################################################################
     # Replace "pass" statement with your code
-    pass
-
+    noise = torch.rand((batch_size, noise_dim), dtype=dtype, device=device) * 2 - 1
     ##############################################################################
     #                              END OF YOUR CODE                              #
     ##############################################################################
@@ -47,7 +46,15 @@ def discriminator():
     # TODO: Implement discriminator.                                           #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    input_size, hidden_size, output_size = 784, 256, 1
+    alpha = 0.01
+    model = nn.Sequential(
+        nn.Linear(input_size, hidden_size),
+        nn.LeakyReLU(negative_slope=alpha),
+        nn.Linear(hidden_size, hidden_size),
+        nn.LeakyReLU(negative_slope=alpha),
+        nn.Linear(hidden_size, output_size),
+    )
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -64,7 +71,15 @@ def generator(noise_dim=NOISE_DIM):
     # TODO: Implement generator.                                               #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    hidden_size, input_size = 1024, 784
+    model = nn.Sequential(
+        nn.Linear(noise_dim, hidden_size),
+        nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+        nn.ReLU(),
+        nn.Linear(hidden_size, input_size),
+        nn.Tanh()
+    )
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -88,7 +103,8 @@ def discriminator_loss(logits_real, logits_fake):
     # TODO: Implement discriminator_loss.                                        #
     ##############################################################################
     # Replace "pass" statement with your code
-    pass
+    loss = nn.functional.binary_cross_entropy_with_logits(logits_real, torch.ones_like(logits_real))
+    loss += nn.functional.binary_cross_entropy_with_logits(logits_fake, torch.zeros_like(logits_fake))
     ##############################################################################
     #                              END OF YOUR CODE                              #
     ##############################################################################
@@ -110,7 +126,7 @@ def generator_loss(logits_fake):
     # TODO: Implement generator_loss.                                            #
     ##############################################################################
     # Replace "pass" statement with your code
-    pass
+    loss = nn.functional.binary_cross_entropy_with_logits(logits_fake, torch.ones_like(logits_fake))
     ##############################################################################
     #                              END OF YOUR CODE                              #
     ##############################################################################
