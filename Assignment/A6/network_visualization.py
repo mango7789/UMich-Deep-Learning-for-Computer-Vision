@@ -41,7 +41,11 @@ def compute_saliency_maps(X, y, model):
     # Hint: X.grad.data stores the gradients                                     #
     ##############################################################################
     # Replace "pass" statement with your code
-    pass
+    N = X.shape[0]
+    output = model(X)
+    loss = torch.sum(output[torch.arange(N), y])
+    loss.backward()
+    saliency, _ = torch.max(X.grad.data.abs(), dim=1)
     ##############################################################################
     #               END OF YOUR CODE                                             #
     ##############################################################################
@@ -84,7 +88,19 @@ def make_adversarial_attack(X, target_y, model, max_iter=100, verbose=True):
     # You can print your progress over iterations to check your algorithm.       #
     ##############################################################################
     # Replace "pass" statement with your code
-    pass
+    for i in range(max_iter):
+        pred_y = model(X_adv)
+        score = pred_y[0, target_y].squeeze()
+        model.zero_grad()
+        score.backward()
+        if torch.argmax(pred_y[0,:], dim=0) == target_y:
+            print("Model is fooled")
+            break
+        if verbose:
+            print(f"Iteration {i:d}: target score {score:.3f}, max score {pred_y.amax():.3f}")
+        with torch.no_grad():
+            X_adv += learning_rate * X_adv.grad / X_adv.grad.norm()
+            X_adv.grad.zero_()
     ##############################################################################
     #                             END OF YOUR CODE                               #
     ##############################################################################
