@@ -3,7 +3,7 @@ import random
 
 import matplotlib.pyplot as plt
 import torch
-import torchvision
+# import torchvision
 from torchvision.datasets import CIFAR10
 
 import eecs598

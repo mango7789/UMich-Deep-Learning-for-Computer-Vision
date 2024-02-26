@@ -2,10 +2,10 @@ import math
 from typing import Optional, Tuple
 
 import torch
-import torchvision
+# import torchvision
 from torch import nn
 from torch.nn import functional as F
-from torchvision.models import feature_extraction
+# from torchvision.models import feature_extraction
 
 
 def hello_rnn_lstm_captioning():
@@ -15,7 +15,7 @@ def hello_rnn_lstm_captioning():
 class ImageEncoder(nn.Module):
     """
     Convolutional network that accepts images as input and outputs their spatial
-    grid features. This module servesx as the image encoder in image captioning
+    grid features. This module serves as the image encoder in image captioning
     model. We will use a tiny RegNet-X 400MF model that is initialized with
     ImageNet-pretrained weights from Torchvision library.
 
@@ -144,7 +144,10 @@ def rnn_step_backward(dnext_h, cache):
     # terms of the output value from tanh.
     ##########################################################################
     # Replace "pass" statement with your code
-    pass
+    x, prev_h, Wx, Wh, mixed = cache
+    dmid_h = 1 - torch.pow(torch.tanh(dnext_h), 2)
+    dprev_h = dmid_h.mm(Wh)
+    dx = dmid_h.mm(Wx)
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
