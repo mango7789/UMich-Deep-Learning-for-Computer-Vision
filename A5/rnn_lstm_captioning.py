@@ -2,10 +2,10 @@ import math
 from typing import Optional, Tuple
 
 import torch
-# import torchvision
+import torchvision
 from torch import nn
 from torch.nn import functional as F
-# from torchvision.models import feature_extraction
+from torchvision.models import feature_extraction
 
 
 def hello_rnn_lstm_captioning():
